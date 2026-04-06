@@ -4,6 +4,9 @@ A comprehensive system for managing mathematical lemmas, theorems, and proofs
 with persistence, advanced search, and multiple export formats.
 """
 
+import csv
+import html as html_module
+import io
 import json
 import os
 from datetime import datetime
@@ -272,19 +275,19 @@ class CodedLemmaUtility:
     def export_lemma(self, code: str, format: str = 'text') -> Optional[str]:
         """
         Export a single lemma in the specified format.
-        
+
         Args:
             code: The lemma code
-            format: Export format ('text', 'markdown', 'latex', 'json')
-            
+            format: Export format ('text', 'markdown', 'latex', 'json', 'html', 'csv')
+
         Returns:
             Formatted string or None if lemma not found
         """
         if code not in self.lemmas:
             return None
-        
+
         lemma = self.lemmas[code]
-        
+
         if format == 'text':
             return self._export_text(code, lemma)
         elif format == 'markdown':
@@ -293,6 +296,15 @@ class CodedLemmaUtility:
             return self._export_latex(code, lemma)
         elif format == 'json':
             return json.dumps({code: lemma}, indent=2)
+        elif format == 'html':
+            return self._export_html(code, lemma)
+        elif format == 'csv':
+            # Return header + data row so a single-lemma export is self-contained.
+            buf = io.StringIO()
+            writer = csv.writer(buf)
+            writer.writerow(self._csv_header())
+            writer.writerow(self._csv_row(code, lemma))
+            return buf.getvalue()
         else:
             return self._export_text(code, lemma)
     
@@ -346,14 +358,77 @@ class CodedLemmaUtility:
             output += f"% Notes: {lemma['notes']}\n"
         return output
     
+    def _export_html(self, code: str, lemma: Dict[str, Any]) -> str:
+        """Export a single lemma as an HTML <article> fragment."""
+        esc = html_module.escape
+
+        def tag(el: str, content: str, **attrs: str) -> str:
+            attr_str = ''.join(
+                f' {k.rstrip("_")}="{v}"' for k, v in attrs.items()
+            )
+            return f'<{el}{attr_str}>{content}</{el}>'
+
+        parts = [f'<article class="lemma" id="{esc(code)}">']
+        parts.append(tag('h2', f'{esc(code)} — {esc(lemma["category"])}'))
+        parts.append(tag('p', tag('strong', 'Statement: ') + esc(lemma['statement'])))
+
+        if lemma['proof']:
+            parts.append(tag('details', tag('summary', 'Proof') + tag('p', esc(lemma['proof']))))
+
+        if lemma['tags']:
+            badge_html = ' '.join(
+                tag('span', esc(t), class_='tag') for t in lemma['tags']
+            )
+            parts.append(tag('p', tag('strong', 'Tags: ') + badge_html))
+
+        if lemma['notes']:
+            parts.append(tag('p', tag('em', esc(lemma['notes']))))
+
+        if lemma['dependencies']:
+            links = ', '.join(
+                tag('a', esc(dep), href_=f'#{esc(dep)}') for dep in lemma['dependencies']
+            )
+            parts.append(tag('p', tag('strong', 'Depends on: ') + links))
+
+        parts.append(
+            tag('footer',
+                tag('small', f'Created: {esc(lemma["created"])} | '
+                             f'Modified: {esc(lemma["modified"])}'))
+        )
+        parts.append('</article>')
+        return '\n'.join(parts)
+
+    @staticmethod
+    def _csv_header() -> List[str]:
+        """Return the canonical CSV column header row."""
+        return [
+            'code', 'category', 'statement', 'proof',
+            'tags', 'notes', 'dependencies', 'created', 'modified',
+        ]
+
+    @staticmethod
+    def _csv_row(code: str, lemma: Dict[str, Any]) -> List[str]:
+        """Flatten a lemma dict into a CSV row aligned with _csv_header."""
+        return [
+            code,
+            lemma.get('category', ''),
+            lemma.get('statement', ''),
+            lemma.get('proof', ''),
+            '|'.join(lemma.get('tags', [])),
+            lemma.get('notes', ''),
+            '|'.join(lemma.get('dependencies', [])),
+            lemma.get('created', ''),
+            lemma.get('modified', ''),
+        ]
+
     def export_all(self, format: str = 'markdown', filename: Optional[str] = None) -> str:
         """
         Export all lemmas in the specified format.
-        
+
         Args:
-            format: Export format ('text', 'markdown', 'latex', 'json')
+            format: Export format ('text', 'markdown', 'latex', 'json', 'html', 'csv')
             filename: Optional filename to save to
-            
+
         Returns:
             The exported content
         """
@@ -362,29 +437,73 @@ class CodedLemmaUtility:
                 'metadata': self.metadata,
                 'lemmas': self.lemmas
             }, indent=2)
-        else:
-            content = ""
-            if format == 'markdown':
-                content = "# Codified Lemma Collection\n\n"
-                content += f"Generated: {datetime.now().isoformat()}\n\n"
-                content += f"Total Lemmas: {len(self.lemmas)}\n\n"
-                content += "---\n\n"
-            elif format == 'latex':
-                content = "\\documentclass{article}\n"
-                content += "\\usepackage{amsthm}\n"
-                content += "\\newtheorem{lemma}{Lemma}\n"
-                content += "\\begin{document}\n\n"
-            
+
+        elif format == 'csv':
+            buf = io.StringIO()
+            writer = csv.writer(buf)
+            writer.writerow(self._csv_header())
             for code in sorted(self.lemmas.keys()):
-                content += self.export_lemma(code, format) + "\n"
-            
+                writer.writerow(self._csv_row(code, self.lemmas[code]))
+            content = buf.getvalue()
+
+        elif format == 'html':
+            ts = html_module.escape(datetime.now().isoformat())
+            total = len(self.lemmas)
+            body_parts = []
+            for code in sorted(self.lemmas.keys()):
+                body_parts.append(self._export_html(code, self.lemmas[code]))
+            body = '\n'.join(body_parts)
+            content = (
+                '<!DOCTYPE html>\n'
+                '<html lang="en">\n'
+                '<head>\n'
+                '<meta charset="UTF-8">\n'
+                '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+                '<title>Codified Lemma Collection</title>\n'
+                '<style>\n'
+                '  body { font-family: Georgia, serif; max-width: 860px;'
+                ' margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }\n'
+                '  h1 { border-bottom: 2px solid #333; padding-bottom: .4rem; }\n'
+                '  article.lemma { border: 1px solid #ddd; border-radius: 6px;'
+                ' padding: 1.2rem 1.4rem; margin-bottom: 1.5rem; }\n'
+                '  article.lemma h2 { margin-top: 0; font-size: 1.1rem; }\n'
+                '  span.tag { background: #eef; border-radius: 4px;'
+                ' padding: 1px 6px; margin-right: 4px; font-size: .85rem; }\n'
+                '  details summary { cursor: pointer; font-weight: bold; }\n'
+                '  footer small { color: #777; }\n'
+                '</style>\n'
+                '</head>\n'
+                '<body>\n'
+                '<h1>Codified Lemma Collection</h1>\n'
+                f'<p>Generated: {ts} &mdash; Total lemmas: {total}</p>\n'
+                f'{body}\n'
+                '</body>\n'
+                '</html>\n'
+            )
+
+        else:
+            content = ''
+            if format == 'markdown':
+                content = '# Codified Lemma Collection\n\n'
+                content += f'Generated: {datetime.now().isoformat()}\n\n'
+                content += f'Total Lemmas: {len(self.lemmas)}\n\n'
+                content += '---\n\n'
+            elif format == 'latex':
+                content = '\\documentclass{article}\n'
+                content += '\\usepackage{amsthm}\n'
+                content += '\\newtheorem{lemma}{Lemma}\n'
+                content += '\\begin{document}\n\n'
+
+            for code in sorted(self.lemmas.keys()):
+                content += self.export_lemma(code, format) + '\n'
+
             if format == 'latex':
-                content += "\\end{document}\n"
-        
+                content += '\\end{document}\n'
+
         if filename:
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(content)
-        
+
         return content
     
     def save(self) -> bool:
@@ -486,7 +605,7 @@ def main():
     
     parser = argparse.ArgumentParser(description='Codified Lemma Utility')
     parser.add_argument('--file', default='lemmas.json', help='Data file path')
-    parser.add_argument('--export', choices=['text', 'markdown', 'latex', 'json'], 
+    parser.add_argument('--export', choices=['text', 'markdown', 'latex', 'json', 'html', 'csv'],
                        help='Export all lemmas in specified format')
     parser.add_argument('--output', help='Output filename for export')
     parser.add_argument('--stats', action='store_true', help='Show statistics')
