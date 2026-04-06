@@ -54,6 +54,8 @@ Each lemma is assigned a unique code (e.g., `L1000`, `L1001`) and can include:
 - **Markdown**: Perfect for documentation and GitHub
 - **LaTeX**: Ready for academic papers
 - **JSON**: Machine-readable format for data exchange
+- **HTML**: Styled, self-contained web page with collapsible proofs and tag badges
+- **CSV**: Flat spreadsheet format; multi-value fields (tags, dependencies) are pipe-separated (`|`)
 
 ### Advanced Features
 - **Dependency Chains**: Automatically trace all dependencies
@@ -114,6 +116,10 @@ for code, lemma in results.items():
 
 # Export to Markdown
 markdown = clu.export_all('markdown', 'my_lemmas.md')
+
+# Export to HTML or CSV
+clu.export_all('html', 'my_lemmas.html')
+clu.export_all('csv', 'my_lemmas.csv')
 ```
 
 ### Command Line Usage
@@ -254,6 +260,8 @@ text = clu.export_lemma(code, format='text')
 markdown = clu.export_lemma(code, format='markdown')
 latex = clu.export_lemma(code, format='latex')
 json_str = clu.export_lemma(code, format='json')
+html = clu.export_lemma(code, format='html')
+csv_str = clu.export_lemma(code, format='csv')  # includes header row
 
 print(markdown)
 ```
@@ -264,6 +272,8 @@ print(markdown)
 clu.export_all('markdown', 'all_lemmas.md')
 clu.export_all('latex', 'all_lemmas.tex')
 clu.export_all('json', 'backup.json')
+clu.export_all('html', 'all_lemmas.html')
+clu.export_all('csv', 'all_lemmas.csv')
 
 # Get content without saving
 content = clu.export_all('markdown')
@@ -333,8 +343,8 @@ Initialize the utility with optional data file path.
 - `search_by_tag(tag) -> Dict`
 
 ##### Export
-- `export_lemma(code, format='text') -> Optional[str]`
-- `export_all(format='markdown', filename=None) -> str`
+- `export_lemma(code, format='text') -> Optional[str]` — formats: `text`, `markdown`, `latex`, `json`, `html`, `csv`
+- `export_all(format='markdown', filename=None) -> str` — formats: `text`, `markdown`, `latex`, `json`, `html`, `csv`
 
 ##### Information
 - `list_all() -> Dict[str, str]`
@@ -361,6 +371,8 @@ python clu.py --export markdown --output lemmas.md
 python clu.py --export latex --output paper.tex
 python clu.py --export json --output backup.json
 python clu.py --export text --output notes.txt
+python clu.py --export html --output lemmas.html
+python clu.py --export csv --output lemmas.csv
 
 # Use a specific data file
 python clu.py --file my_collection.json --stats
@@ -493,6 +505,33 @@ By the identity property of addition
 % Tags: arithmetic, basic
 ```
 
+### HTML Export Format
+
+`export_all('html')` produces a complete, self-contained HTML document with embedded CSS. Each lemma is rendered as an `<article>` block. The proof is wrapped in a collapsible `<details>` element, and tags appear as inline badge spans. Dependency codes are anchor links to other lemmas on the same page.
+
+`export_lemma(code, 'html')` returns a standalone `<article>` fragment suitable for embedding in an existing page.
+
+```html
+<article class="lemma" id="L1000">
+  <h2>L1000 — algebra</h2>
+  <p><strong>Statement: </strong>For all integers n, n + 0 = n</p>
+  <details><summary>Proof</summary><p>By the identity property of addition</p></details>
+  <p><strong>Tags: </strong><span class="tag">arithmetic</span> <span class="tag">basic</span></p>
+  <footer><small>Created: 2024-01-01T12:00:00 | Modified: 2024-01-01T12:00:00</small></footer>
+</article>
+```
+
+### CSV Export Format
+
+`export_all('csv')` produces a single header row followed by one row per lemma, sorted by code. `export_lemma(code, 'csv')` returns the header row plus that lemma's data row, making single-lemma exports self-contained.
+
+Multi-value fields (`tags`, `dependencies`) use `|` as a separator within their cell.
+
+```
+code,category,statement,proof,tags,notes,dependencies,created,modified
+L1000,algebra,For all integers n n + 0 = n,By the identity property of addition,arithmetic|basic,,, 2024-01-01T12:00:00,2024-01-01T12:00:00
+```
+
 ## Best Practices
 
 ### Organization
@@ -564,6 +603,10 @@ For issues or questions:
 
 ## Version History
 
+- **1.1.0**: Added HTML and CSV export formats
+  - HTML: full styled document via `export_all`; `<article>` fragment via `export_lemma`
+  - CSV: flat tabular export with pipe-separated multi-value fields
+
 - **1.0.0** (2024): Initial release
   - Core lemma management
   - Persistence with JSON
@@ -574,7 +617,6 @@ For issues or questions:
 ## Contributing
 
 Areas for Improvement:
-- Additional export formats (e.g., HTML, CSV)
 - Graphical visualization of dependencies
 - Web interface
 - Collaborative features
