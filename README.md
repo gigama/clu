@@ -623,6 +623,8 @@ Areas for Improvement:
 - Integration with theorem provers
 - Import from LaTeX documents
 
+---
+
 ## License
 
-This utility is provided as-is for educational and research purposes (MIT License).
+MIT License - (C) Copyright 2026 Gigama LLC
