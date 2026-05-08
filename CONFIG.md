@@ -1,6 +1,6 @@
 # Configuration and Integration Guide
 
-Complete setup and integration guide for the Codified Lemma Utility (CLU).
+Complete setup and integration guide for the Codified Lemma Utility (CLU)
 
 ## Table of Contents
 
@@ -83,13 +83,13 @@ mkdir clu_project
 cd clu_project
 
 # Create virtual environment
-python -m venv venv
+python -m venv .venv
 
 # Activate virtual environment
 # On Linux/macOS:
-source venv/bin/activate
+source .venv/bin/activate
 # On Windows:
-venv\Scripts\activate
+.venv\Scripts\activate
 ```
 
 #### Step 2: Install and Configure
@@ -415,6 +415,7 @@ cat > .gitignore << EOF
 *.pyc
 __pycache__/
 venv/
+.venv
 .env
 *.bak
 EOF
@@ -895,4 +896,4 @@ The CLU system is highly flexible and can be integrated into various workflows:
 5. **Version control**: Git integration for collaboration
 6. **Enterprise deployment**: Docker containers with automated backups
 
-Choose the integration method that best fits the needs and scale.
+Choose the integration method that best fits the project needs and scale.
