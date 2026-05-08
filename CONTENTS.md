@@ -1,6 +1,6 @@
 # CLU Repository Contents
 
-Files included in this repo for the Codified Lemma Utility (CLU)
+Files included for the Codified Lemma Utility (CLU)
 
 ## Files
 
@@ -11,7 +11,7 @@ Files included in this repo for the Codified Lemma Utility (CLU)
 - Usage examples
 - Quick start guide
 - Best practices
-- Troubleshooting section
+- Troubleshooting
 
 ### CONFIG.md
 
@@ -33,4 +33,4 @@ Files included in this repo for the Codified Lemma Utility (CLU)
 - Command-line interface
 - Import/export capabilities
 
-The utility is ready to use - just run python clu.py --stats to see the demo and get started.
+The utility is ready to use - just run python `clu.py --stats` to see the demo and get started.
